@@ -8,7 +8,7 @@ import (
 
 func TestPool(t *testing.T) {
 	// 创建一个有 3 个工作协程的协程池
-	pool := NewPool(3)
+	pool := NewPool(WithWorkerCount(3))
 
 	// 关闭协程池
 	defer pool.Release()
@@ -31,7 +31,7 @@ func TestPool(t *testing.T) {
 }
 
 func TestPoolWithTimeout_NormalTask(t *testing.T) {
-	pool := NewPool(2)
+	pool := NewPool(WithWorkerCount(3), WithTaskChanSize(100))
 	defer pool.Release()
 
 	var counter int32
@@ -50,7 +50,7 @@ func TestPoolWithTimeout_NormalTask(t *testing.T) {
 }
 
 func TestPoolWithTimeout_TimeoutTask(t *testing.T) {
-	pool := NewPool(2)
+	pool := NewPool(WithWorkerCount(3))
 	defer pool.Release()
 
 	var counter int32
@@ -70,7 +70,7 @@ func TestPoolWithTimeout_TimeoutTask(t *testing.T) {
 }
 
 func TestPoolWithTimeout_MixedTasks(t *testing.T) {
-	pool := NewPool(3)
+	pool := NewPool(WithWorkerCount(3))
 	defer pool.Release()
 
 	var normalCounter int32
@@ -104,7 +104,7 @@ func TestPoolWithTimeout_MixedTasks(t *testing.T) {
 }
 
 func TestPoolWithTimeout_ImmediateTask(t *testing.T) {
-	pool := NewPool(2)
+	pool := NewPool(WithTaskChanSize(3))
 	defer pool.Release()
 
 	var counter int32
@@ -122,7 +122,7 @@ func TestPoolWithTimeout_ImmediateTask(t *testing.T) {
 }
 
 func TestPoolWithTimeout_ZeroTimeout(t *testing.T) {
-	pool := NewPool(2)
+	pool := NewPool(WithTaskChanSize(3))
 	defer pool.Release()
 
 	var counter int32
@@ -141,7 +141,7 @@ func TestPoolWithTimeout_ZeroTimeout(t *testing.T) {
 }
 
 func TestPoolConcurrency(t *testing.T) {
-	pool := NewPool(10)
+	pool := NewPool(WithTaskChanSize(100), WithWorkerCount(30))
 	defer pool.Release()
 
 	var counter int32

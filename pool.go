@@ -1,7 +1,6 @@
 package pool
 
 import (
-	"log"
 	"sync"
 	"time"
 )
@@ -9,22 +8,22 @@ import (
 type Task func()
 
 type Worker struct {
-	taskChan chan Task
+	pool *Pool
 }
 
-func NewWorker(taskChan chan Task) Worker {
+func NewWorker(pool *Pool) Worker {
 	return Worker{
-		taskChan: taskChan,
+		pool: pool,
 	}
 }
 
 func (w Worker) Start(wg *sync.WaitGroup) {
 	go func() {
-		for task := range w.taskChan {
+		for task := range w.pool.taskChan {
 			func() {
 				defer func() {
 					if r := recover(); r != nil {
-						log.Printf("Worker panic recovered: %v", r)
+						w.pool.log.Printf("Worker panic recovered: %v", r)
 					}
 					wg.Done()
 				}()
@@ -35,25 +34,40 @@ func (w Worker) Start(wg *sync.WaitGroup) {
 	}()
 }
 
+type Logger interface {
+	Printf(format string, v ...any)
+}
+
+// pool
 type Pool struct {
 	taskChan chan Task
 	workers  []Worker
-	wg       *sync.WaitGroup
+	// logger
+	log Logger
+	// wait group
+	wg *sync.WaitGroup
 }
 
-func NewPool(workerCount int) *Pool {
-	taskChan := make(chan Task)
-	workers := make([]Worker, workerCount)
+func NewPool(Options ...Option) *Pool {
+	config := DefaultPoolConfig
+	for _, opt := range Options {
+		opt(config)
+	}
+
+	taskChan := make(chan Task, config.TaskChanSize)
+	workers := make([]Worker, config.WorkerCount)
+
 	wg := &sync.WaitGroup{}
 
 	pool := &Pool{
 		taskChan: taskChan,
 		workers:  workers,
 		wg:       wg,
+		log:      config.Logger,
 	}
 
-	for i := 0; i < workerCount; i++ {
-		worker := NewWorker(taskChan)
+	for i := 0; i < config.WorkerCount; i++ {
+		worker := NewWorker(pool)
 		worker.Start(wg)
 		pool.workers[i] = worker
 	}
@@ -84,7 +98,7 @@ func (p *Pool) AddTaskWithTimeout(task Task, timeout time.Duration) {
 			// 任务正常完成
 		case <-timer.C:
 			// 超时处理，记录日志而不是 panic
-			log.Printf("Task timeout after %v", timeout)
+			p.log.Printf("Task timeout after %v", timeout)
 		}
 	}
 }
